@@ -64,8 +64,7 @@ Search YouTube videos using Data API v3.
     {
       "videoId": "abc123",
       "title": "Video Title",
-      "url": "https://www.youtube.com/watch?v=abc123",
-      "thumbnail_url": "https://i.ytimg.com/vi/abc123/default.jpg"
+      "url": "https://www.youtube.com/watch?v=abc123"
     }
   ]
 }
@@ -85,7 +84,7 @@ Submit a transcription job for a YouTube video.
 
 **Parameters:**
 | Parameter | Type | Required | Default | Description |
-|-----------|------|----------|-------------|
+|-----------|------|----------|---------|-------------|
 | video | string | Yes | - | YouTube URL or video ID |
 | fallback | boolean | No | true | Use SoundBridge fallback if API fails |
 
@@ -108,7 +107,7 @@ Get transcription job status and result.
 |--------|-------------|
 | pending | Job queued, waiting to process |
 | processing | Currently transcribing |
-| completed | Transcription done, transcript available |
+| completed | Transcribed, transcript available |
 | failed | Transcription failed, error message available |
 
 **Response (pending/processing):**
@@ -126,7 +125,7 @@ Get transcription job status and result.
 {
   "job_id": "...",
   "status": "completed",
-  "transcript": "This is the transcribed text...",
+  "transcript": "Transcribed text content...",
   "error": null
 }
 ```
