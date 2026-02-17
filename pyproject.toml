@@ -1,0 +1,18 @@
+[project]
+name = "ytprobe"
+version = "1.0.0"
+description = "YouTube Probe API - Search and transcript extraction service"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic",
+    "google-api-python-client",
+    "python-dotenv",
+    "youtube-transcript-api",
+    "requests",
+    "yt-dlp",
+]
+
+[project.scripts]
+ytprobe = "main:app"
