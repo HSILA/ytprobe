@@ -22,14 +22,124 @@ FastAPI service for YouTube video search and transcript extraction.
   - Model: Parakeet (MLX-Audio)
   - Required only for transcript fallback
 
-## Endpoints
+## API Specification
+
+### Endpoints
 
 | Method | Path | Description |
 |--------|-------|-------------|
 | GET | `/health` | Health check |
-| GET | `/search?q={query}` | Search YouTube videos |
+| GET | `/search?q={query}&max_results={n}` | Search YouTube videos |
 | POST | `/transcript` | Submit transcription job |
 | GET | `/job/{job_id}` | Get job status/result |
+
+### /health
+
+Health check endpoint.
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "service": "YouTube Probe API"
+}
+```
+
+### /search
+
+Search YouTube videos using Data API v3.
+
+**Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| q | string | Yes | - | Search query |
+| max_results | integer | No | 10 | Max results (1-50) |
+
+**Response:**
+```json
+{
+  "query": "coffee tutorial",
+  "count": 10,
+  "results": [
+    {
+      "videoId": "abc123",
+      "title": "Video Title",
+      "url": "https://www.youtube.com/watch?v=abc123",
+      "thumbnail_url": "https://i.ytimg.com/vi/abc123/default.jpg"
+    }
+  ]
+}
+```
+
+### /transcript
+
+Submit a transcription job for a YouTube video.
+
+**Request Body:**
+```json
+{
+  "video": "https://youtube.com/watch?v=VIDEO_ID",
+  "fallback": true
+}
+```
+
+**Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|-------------|
+| video | string | Yes | - | YouTube URL or video ID |
+| fallback | boolean | No | true | Use SoundBridge fallback if API fails |
+
+**Response:**
+```json
+{
+  "job_id": "550e8400-e29b-41d4-a716-4466554400000",
+  "status": "pending",
+  "transcript": null,
+  "error": null
+}
+```
+
+### /job/{job_id}
+
+Get transcription job status and result.
+
+**Job Statuses:**
+| Status | Description |
+|--------|-------------|
+| pending | Job queued, waiting to process |
+| processing | Currently transcribing |
+| completed | Transcription done, transcript available |
+| failed | Transcription failed, error message available |
+
+**Response (pending/processing):**
+```json
+{
+  "job_id": "...",
+  "status": "processing",
+  "transcript": null,
+  "error": null
+}
+```
+
+**Response (completed):**
+```json
+{
+  "job_id": "...",
+  "status": "completed",
+  "transcript": "This is the transcribed text...",
+  "error": null
+}
+```
+
+**Response (failed):**
+```json
+{
+  "job_id": "...",
+  "status": "failed",
+  "transcript": null,
+  "error": "Video unavailable"
+}
+```
 
 ## Usage
 
@@ -70,7 +180,53 @@ uv run pytest --cov=api --cov=main
 
 ## Docker
 
+### Build and Run
+
 ```bash
+# Build the image
 docker build -t ytprobe .
+
+# Run the container (exposes port 8743 on 0.0.0.0)
 docker run -p 8743:8743 --env-file .env ytprobe
+
+# Run in background
+docker run -d --name ytprobe -p 8743:8743 --env-file .env ytprobe
+```
+
+### Network Access
+
+The container exposes port `8743` on `0.0.0.0`, allowing other services and clients to connect via:
+
+- **Localhost**: `http://localhost:8743`
+- **Local IP**: Find your Mac's IP, e.g. `http://192.168.1.5:8743`
+- **Docker network**: From other containers, use service name: `http://ytprobe:8743`
+
+**Get your local IP:**
+```bash
+# macOS/Linux
+ipconfig getifaddr en0 | awk '/inet/ {print $2}'
+
+# Or use hostname -I
+hostname -I
+```
+
+**Example: Connecting from another machine:**
+```bash
+# If your Mac IP is 192.168.1.5
+curl http://192.168.1.5:8743/health
+```
+
+### Docker Compose
+
+Create `docker-compose.yml`:
+
+```yaml
+services:
+  ytprobe:
+    build: .
+    ports:
+      - "8743:8743"
+    env_file:
+      - .env
+    network_mode: "host"  # For SoundBridge access from host
 ```
