@@ -1,5 +1,8 @@
 FROM python:3.11-slim
 
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     ffmpeg \
@@ -10,11 +13,13 @@ RUN apt-get update && apt-get install -y \
 RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
 RUN chmod a+rx /usr/local/bin/yt-dlp
 
-# Install Python dependencies
-COPY pyproject.toml .
-RUN pip install --no-cache-dir pyproject.toml
-
 WORKDIR /app
+
+# Install Python dependencies (cached layer)
+COPY pyproject.toml .
+RUN uv pip install --system .
+
+# Copy application code
 COPY . .
 
 # Expose port
