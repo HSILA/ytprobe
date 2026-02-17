@@ -52,6 +52,22 @@ See `.env.example`:
 - `YOUTUBE_API_KEY`: Required for search endpoint
 - `SOUNDBRIDGE_URL`: Optional, defaults to `http://localhost:8742`
 
+## Testing
+
+```bash
+# Install test dependencies
+uv pip install -e ".[dev]"
+
+# Run all tests
+uv run pytest
+
+# Run specific test class
+uv run pytest tests/test_api.py::TestHealth
+
+# Run with coverage
+uv run pytest --cov=api --cov=main
+```
+
 ## Docker
 
 ```bash
