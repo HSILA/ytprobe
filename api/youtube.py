@@ -22,7 +22,8 @@ def search_videos(
         api_key: YouTube Data API key (uses env var if not provided)
 
     Returns:
-        List of video dicts with keys: videoId, title, url, thumbnail_url
+        List of video dicts with keys: videoId, title, url, channelTitle,
+        publishedAt, description, duration
         Returns None if API key is not configured or on error.
 
     Raises:
@@ -57,22 +58,42 @@ def search_videos(
         )
         response = request.execute()
 
-        items = []
+        # Extract video IDs and snippet data
+        video_ids = []
+        snippet_data = {}
         for item in response.get("items", []):
             video_id = (item.get("id") or {}).get("videoId")
-            snippet = item.get("snippet", {})
-            title = snippet.get("title")
             if video_id:
-                items.append(
-                    {
-                        "videoId": video_id,
-                        "title": title,
-                        "url": f"https://www.youtube.com/watch?v={video_id}",
-                        "thumbnail_url": snippet.get("thumbnails", {})
-                        .get("default", {})
-                        .get("url"),
-                    }
-                )
+                video_ids.append(video_id)
+                snippet_data[video_id] = item.get("snippet", {})
+
+        # Get duration from videos endpoint (1 quota unit)
+        duration_data = {}
+        if video_ids:
+            videos_request = youtube.videos().list(
+                part="contentDetails",
+                id=",".join(video_ids),
+            )
+            videos_response = videos_request.execute()
+            for item in videos_response.get("items", []):
+                video_id = item.get("id")
+                if video_id:
+                    duration_data[video_id] = item.get("contentDetails", {}).get("duration")
+
+        # Build final items
+        items = []
+        for video_id, snippet in snippet_data.items():
+            items.append(
+                {
+                    "videoId": video_id,
+                    "title": snippet.get("title"),
+                    "url": f"https://www.youtube.com/watch?v={video_id}",
+                    "channelTitle": snippet.get("channelTitle"),
+                    "publishedAt": snippet.get("publishedAt"),
+                    "description": snippet.get("description"),
+                    "duration": duration_data.get(video_id),
+                }
+            )
 
         logger.info(f"Found {len(items)} videos for query: {query}")
         return items

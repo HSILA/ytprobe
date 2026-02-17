@@ -64,7 +64,11 @@ Search YouTube videos using Data API v3.
     {
       "videoId": "abc123",
       "title": "Video Title",
-      "url": "https://www.youtube.com/watch?v=abc123"
+      "url": "https://www.youtube.com/watch?v=abc123",
+      "channelTitle": "Channel Name",
+      "publishedAt": "2024-01-15T10:30:00Z",
+      "description": "Video description text...",
+      "duration": "PT10M30S"
     }
   ]
 }
