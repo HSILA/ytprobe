@@ -181,6 +181,69 @@ uv run pytest tests/test_api.py::TestHealth
 uv run pytest --cov=api --cov=main
 ```
 
+## Quick Start with Just
+
+This project includes a `justfile` for common tasks. Install [just](https://github.com/casey/just) first:
+
+```bash
+# macOS
+brew install just
+
+# List all commands
+just --list
+```
+
+### Common Commands
+
+| Command | Description |
+|---------|-------------|
+| `just setup` | Initial setup (copy .env, install deps) |
+| `just dev` | Run API locally with hot reload |
+| `just test` | Run all tests |
+| `just build` | Build Docker image |
+| `just run-d` | Run Docker container in background |
+| `just run-auto` | Run with auto-restart (starts on boot) |
+| `just refresh` | Full rebuild: stop → rm → build → run |
+| `just logs` | Tail container logs |
+| `just health` | Quick health check |
+| `just search "query"` | Test search endpoint |
+
+### Docker Commands
+
+| Command | Description |
+|---------|-------------|
+| `just build` | Build Docker image |
+| `just run` | Run in foreground |
+| `just run-d` | Run in background |
+| `just run-auto` | Run with `--restart unless-stopped` |
+| `just stop` | Stop container |
+| `just restart` | Restart container |
+| `just logs` | Tail logs |
+| `just rm` | Remove container |
+| `just prune` | Remove dangling images |
+| `just refresh` | Full rebuild and restart |
+| `just refresh-auto` | Full rebuild with auto-restart |
+
+### Development Commands
+
+| Command | Description |
+|---------|-------------|
+| `just dev` | Run locally with uvicorn --reload |
+| `just test` | Run pytest |
+| `just test-cov` | Run tests with coverage |
+| `just install` | Install dependencies |
+| `just clean` | Remove Python cache files |
+
+### API Testing Commands
+
+| Command | Description |
+|---------|-------------|
+| `just health` | Health check |
+| `just search "coffee"` | Test search endpoint |
+| `just transcript "VIDEO_URL"` | Submit transcript job |
+| `just job JOB_ID` | Get job status |
+| `just ip` | Show local IP for network access |
+
 ## Docker
 
 ### Build and Run
@@ -194,6 +257,23 @@ docker run -p 8743:8743 --env-file .env ytprobe
 
 # Run in background
 docker run -d --name ytprobe -p 8743:8743 --env-file .env ytprobe
+
+# Run with auto-restart (starts on system boot)
+docker run -d --name ytprobe --restart unless-stopped -p 8743:8743 --env-file .env ytprobe
+```
+
+### Restart Policies
+
+| Policy | Behavior |
+|--------|----------|
+| `--restart no` | No auto-restart (default) |
+| `--restart on-failure` | Restart only on error |
+| `--restart always` | Always restart |
+| `--restart unless-stopped` | Restart unless explicitly stopped (recommended) |
+
+Update policy on existing container:
+```bash
+docker update --restart unless-stopped ytprobe
 ```
 
 ### Network Access
