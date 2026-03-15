@@ -127,7 +127,10 @@ def search_videos(
             audio_lang = audio_lang_data.get(video_id)
 
             # Filter by audio language if lang is specified
-            if lang and audio_lang:
+            if lang:
+                # Skip videos without language metadata when language filter is requested
+                if not audio_lang:
+                    continue
                 # Normalize comparison (e.g., "en-US" should match "en")
                 if not (audio_lang == lang or audio_lang.startswith(f"{lang}-")):
                     continue
