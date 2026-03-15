@@ -131,8 +131,16 @@ def search_videos(
                 # Skip videos without language metadata when language filter is requested
                 if not audio_lang:
                     continue
+
+                # Case-insensitive BCP-47 matching (e.g., "EN" -> "en", "en-us" -> "en-US")
+                normalized_lang = lang.lower()
+                normalized_audio_lang = audio_lang.lower()
+
                 # Normalize comparison (e.g., "en-US" should match "en")
-                if not (audio_lang == lang or audio_lang.startswith(f"{lang}-")):
+                if not (
+                    normalized_audio_lang == normalized_lang
+                    or normalized_audio_lang.startswith(f"{normalized_lang}-")
+                ):
                     continue
 
             items.append(
