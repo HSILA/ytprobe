@@ -32,6 +32,7 @@ def search_videos(
     max_results: int = 10,
     order: str = "relevance",
     published_after: Optional[str] = None,
+    lang: Optional[str] = None,
     api_key: Optional[str] = None,
 ) -> Optional[List[Dict]]:
     """Search YouTube videos using Data API v3.
@@ -41,6 +42,7 @@ def search_videos(
         max_results: Maximum number of results (default: 10)
         order: Sort order - relevance, date, rating, viewCount (default: relevance)
         published_after: ISO 8601 timestamp to filter videos published after this date
+        lang: Language code (BCP-47 or ISO 639-1) to filter by audio language (e.g., "en", "es")
         api_key: YouTube Data API key (uses env var if not provided)
 
     Returns:
@@ -76,7 +78,7 @@ def search_videos(
             "published_after must be ISO 8601 format (e.g., 2026-03-01T00:00:00Z)"
         )
 
-    logger.info(f"Searching YouTube: query='{query}', max_results={max_results}, order={order}, published_after={published_after}")
+    logger.info(f"Searching YouTube: query='{query}', max_results={max_results}, order={order}, published_after={published_after}, lang={lang}")
 
     try:
         youtube = build("youtube", "v3", developerKey=key)
@@ -89,6 +91,8 @@ def search_videos(
         }
         if published_after:
             search_params["publishedAfter"] = published_after
+        if lang:
+            search_params["relevanceLanguage"] = lang
 
         request = youtube.search().list(**search_params)
         response = request.execute()
@@ -102,11 +106,12 @@ def search_videos(
                 video_ids.append(video_id)
                 snippet_data[video_id] = item.get("snippet", {})
 
-        # Get duration from videos endpoint (1 quota unit)
+        # Get duration and audio language from videos endpoint (1 quota unit)
         duration_data = {}
+        audio_lang_data = {}
         if video_ids:
             videos_request = youtube.videos().list(
-                part="contentDetails",
+                part="contentDetails,snippet",
                 id=",".join(video_ids),
             )
             videos_response = videos_request.execute()
@@ -114,10 +119,30 @@ def search_videos(
                 video_id = item.get("id")
                 if video_id:
                     duration_data[video_id] = item.get("contentDetails", {}).get("duration")
+                    audio_lang_data[video_id] = item.get("snippet", {}).get("defaultAudioLanguage")
 
-        # Build final items
+        # Build final items, filtering by audio language if specified
         items = []
         for video_id, snippet in snippet_data.items():
+            audio_lang = audio_lang_data.get(video_id)
+
+            # Filter by audio language if lang is specified
+            if lang:
+                # Skip videos without language metadata when language filter is requested
+                if not audio_lang:
+                    continue
+
+                # Case-insensitive BCP-47 matching (e.g., "EN" -> "en", "en-us" -> "en-US")
+                normalized_lang = lang.lower()
+                normalized_audio_lang = audio_lang.lower()
+
+                # Normalize comparison (e.g., "en-US" should match "en")
+                if not (
+                    normalized_audio_lang == normalized_lang
+                    or normalized_audio_lang.startswith(f"{normalized_lang}-")
+                ):
+                    continue
+
             items.append(
                 {
                     "videoId": video_id,
@@ -127,10 +152,11 @@ def search_videos(
                     "publishedAt": snippet.get("publishedAt"),
                     "description": snippet.get("description"),
                     "duration": duration_data.get(video_id),
+                    "defaultAudioLanguage": audio_lang,
                 }
             )
 
-        logger.info(f"Found {len(items)} videos for query: {query}")
+        logger.info(f"Found {len(items)} videos for query: {query}" + (f" (filtered by lang={lang})" if lang else ""))
         return items
 
     except Exception as e:
