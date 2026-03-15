@@ -2,6 +2,7 @@
 
 """YouTube Data API v3 integration for video search."""
 
+from datetime import datetime
 import os
 import logging
 from typing import List, Dict, Optional
@@ -9,9 +10,28 @@ from typing import List, Dict, Optional
 logger = logging.getLogger(__name__)
 
 
+def _validate_iso8601(timestamp: str) -> bool:
+    """Validate ISO 8601 / RFC 3339 timestamp format."""
+    formats = [
+        "%Y-%m-%dT%H:%M:%SZ",
+        "%Y-%m-%dT%H:%M:%S.%fZ",
+        "%Y-%m-%dT%H:%M:%S%z",
+        "%Y-%m-%dT%H:%M:%S.%f%z",
+    ]
+    for fmt in formats:
+        try:
+            datetime.strptime(timestamp, fmt)
+            return True
+        except ValueError:
+            continue
+    return False
+
+
 def search_videos(
     query: str,
     max_results: int = 10,
+    order: str = "relevance",
+    published_after: Optional[str] = None,
     api_key: Optional[str] = None,
 ) -> Optional[List[Dict]]:
     """Search YouTube videos using Data API v3.
@@ -19,6 +39,8 @@ def search_videos(
     Args:
         query: Search query string
         max_results: Maximum number of results (default: 10)
+        order: Sort order - relevance, date, rating, viewCount (default: relevance)
+        published_after: ISO 8601 timestamp to filter videos published after this date
         api_key: YouTube Data API key (uses env var if not provided)
 
     Returns:
@@ -27,7 +49,7 @@ def search_videos(
         Returns None if API key is not configured or on error.
 
     Raises:
-        ValueError: If max_results < 1 or > 50
+        ValueError: If max_results < 1 or > 50 or order is invalid
     """
     if max_results < 1 or max_results > 50:
         raise ValueError("max_results must be between 1 and 50")
@@ -45,17 +67,30 @@ def search_videos(
             "Install with: uv pip install google-api-python-client"
         ) from e
 
-    logger.info(f"Searching YouTube: query='{query}', max_results={max_results}")
+    valid_orders = ["date", "rating", "relevance", "viewCount"]  # sorted for deterministic error message
+    if order not in valid_orders:
+        raise ValueError(f"order must be one of: {', '.join(valid_orders)}")
+
+    if published_after and not _validate_iso8601(published_after):
+        raise ValueError(
+            "published_after must be ISO 8601 format (e.g., 2026-03-01T00:00:00Z)"
+        )
+
+    logger.info(f"Searching YouTube: query='{query}', max_results={max_results}, order={order}, published_after={published_after}")
 
     try:
         youtube = build("youtube", "v3", developerKey=key)
-        request = youtube.search().list(
-            part="snippet",
-            q=query,
-            type="video",
-            maxResults=max_results,
-            order="relevance",
-        )
+        search_params = {
+            "part": "snippet",
+            "q": query,
+            "type": "video",
+            "maxResults": max_results,
+            "order": order,
+        }
+        if published_after:
+            search_params["publishedAfter"] = published_after
+
+        request = youtube.search().list(**search_params)
         response = request.execute()
 
         # Extract video IDs and snippet data

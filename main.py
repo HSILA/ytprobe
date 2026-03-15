@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List, Dict
 
 load_dotenv()
 
@@ -72,10 +72,21 @@ def health():
     return {"status": "healthy", "service": "YouTube Probe API"}
 
 @app.get("/search")
-def search(q: str, max_results: int = 10):
+def search(
+    q: str,
+    max_results: int = 10,
+    order: str = "relevance",
+    published_after: Optional[str] = None,
+):
     """Search YouTube videos using official YouTube Data API v3.
 
     Requires YOUTUBE_API_KEY environment variable.
+
+    Args:
+        q: Search query string
+        max_results: Maximum results (1-50, default 10)
+        order: Sort order - relevance, date, rating, viewCount (default: relevance)
+        published_after: ISO 8601 timestamp to filter videos published after this date
     """
     if not q or not q.strip():
         raise HTTPException(status_code=400, detail="Query parameter 'q' is required")
@@ -85,7 +96,12 @@ def search(q: str, max_results: int = 10):
 
     try:
         from api.youtube import search_videos
-        results = search_videos(q, max_results=max_results)
+        results = search_videos(
+            q,
+            max_results=max_results,
+            order=order,
+            published_after=published_after,
+        )
 
         if results is None:
             return {
@@ -97,6 +113,8 @@ def search(q: str, max_results: int = 10):
 
         return {"query": q, "count": len(results), "results": results}
 
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except ImportError as e:
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
@@ -156,7 +174,7 @@ def root():
         "version": "1.0.0",
         "endpoints": {
             "health": "GET /health",
-            "search": "GET /search?q={query}&max_results={n}",
+            "search": "GET /search?q={query}&max_results={n}&order={relevance|date|rating|viewCount}&published_after={ISO8601}",
             "transcript": "POST /transcript",
             "job": "GET /job/{job_id}",
         },
