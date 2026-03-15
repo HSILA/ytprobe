@@ -77,6 +77,7 @@ def search(
     max_results: int = 10,
     order: str = "relevance",
     published_after: Optional[str] = None,
+    lang: Optional[str] = None,
 ):
     """Search YouTube videos using official YouTube Data API v3.
 
@@ -87,6 +88,7 @@ def search(
         max_results: Maximum results (1-50, default 10)
         order: Sort order - relevance, date, rating, viewCount (default: relevance)
         published_after: ISO 8601 timestamp to filter videos published after this date
+        lang: Language code (BCP-47 or ISO 639-1) to filter by audio language (e.g., "en", "es")
     """
     if not q or not q.strip():
         raise HTTPException(status_code=400, detail="Query parameter 'q' is required")
@@ -101,6 +103,7 @@ def search(
             max_results=max_results,
             order=order,
             published_after=published_after,
+            lang=lang,
         )
 
         if results is None:
@@ -174,7 +177,7 @@ def root():
         "version": "1.0.0",
         "endpoints": {
             "health": "GET /health",
-            "search": "GET /search?q={query}&max_results={n}&order={relevance|date|rating|viewCount}&published_after={ISO8601}",
+            "search": "GET /search?q={query}&max_results={n}&order={relevance|date|rating|viewCount}&published_after={ISO8601}&lang={language}",
             "transcript": "POST /transcript",
             "job": "GET /job/{job_id}",
         },
