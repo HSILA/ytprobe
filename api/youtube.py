@@ -2,11 +2,29 @@
 
 """YouTube Data API v3 integration for video search."""
 
+from datetime import datetime
 import os
 import logging
 from typing import List, Dict, Optional
 
 logger = logging.getLogger(__name__)
+
+
+def _validate_iso8601(timestamp: str) -> bool:
+    """Validate ISO 8601 / RFC 3339 timestamp format."""
+    formats = [
+        "%Y-%m-%dT%H:%M:%SZ",
+        "%Y-%m-%dT%H:%M:%S.%fZ",
+        "%Y-%m-%dT%H:%M:%S%z",
+        "%Y-%m-%dT%H:%M:%S.%f%z",
+    ]
+    for fmt in formats:
+        try:
+            datetime.strptime(timestamp, fmt)
+            return True
+        except ValueError:
+            continue
+    return False
 
 
 def search_videos(
@@ -49,9 +67,14 @@ def search_videos(
             "Install with: uv pip install google-api-python-client"
         ) from e
 
-    valid_orders = {"relevance", "date", "rating", "viewCount"}
+    valid_orders = ["date", "rating", "relevance", "viewCount"]  # sorted for deterministic error message
     if order not in valid_orders:
         raise ValueError(f"order must be one of: {', '.join(valid_orders)}")
+
+    if published_after and not _validate_iso8601(published_after):
+        raise ValueError(
+            "published_after must be ISO 8601 format (e.g., 2026-03-01T00:00:00Z)"
+        )
 
     logger.info(f"Searching YouTube: query='{query}', max_results={max_results}, order={order}, published_after={published_after}")
 

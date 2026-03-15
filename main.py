@@ -113,6 +113,8 @@ def search(
 
         return {"query": q, "count": len(results), "results": results}
 
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except ImportError as e:
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
@@ -172,7 +174,7 @@ def root():
         "version": "1.0.0",
         "endpoints": {
             "health": "GET /health",
-            "search": "GET /search?q={query}&max_results={n}",
+            "search": "GET /search?q={query}&max_results={n}&order={relevance|date|rating|viewCount}&published_after={ISO8601}",
             "transcript": "POST /transcript",
             "job": "GET /job/{job_id}",
         },
